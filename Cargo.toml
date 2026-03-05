@@ -6,15 +6,18 @@ description = "Black-box tests and performance benchmarks for StrataDB"
 license = "Apache-2.0"
 
 [dependencies]
-stratadb = { git = "https://github.com/strata-ai-labs/strata-core.git", branch = "main" }
+stratadb = { git = "https://github.com/stratalab/strata-core.git", branch = "main", features = ["embed"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tempfile = "3.8"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
+instant-distance = "0.6"
 petgraph = "0.7"
 tempfile = "3.8"
+tracing-subscriber = "0.3"
+fastembed = "5"
 
 [[bench]]
 name = "kv"
@@ -67,13 +70,53 @@ path = "benches/graph/graph_bfs.rs"
 harness = false
 
 [[bench]]
+name = "graph_wcc"
+path = "benches/graph/graph_wcc.rs"
+harness = false
+
+[[bench]]
+name = "graph_cdlp"
+path = "benches/graph/graph_cdlp.rs"
+harness = false
+
+[[bench]]
+name = "graph_pr"
+path = "benches/graph/graph_pr.rs"
+harness = false
+
+[[bench]]
+name = "graph_lcc"
+path = "benches/graph/graph_lcc.rs"
+harness = false
+
+[[bench]]
+name = "graph_sssp"
+path = "benches/graph/graph_sssp.rs"
+harness = false
+
+[[bench]]
 name = "ycsb"
 path = "benches/ycsb/ycsb.rs"
 harness = false
 
 [[bench]]
+name = "ycsb_doc"
+path = "benches/ycsb/ycsb_doc.rs"
+harness = false
+
+[[bench]]
 name = "ann"
 path = "benches/ann/ann.rs"
+harness = false
+
+[[bench]]
+name = "mem_profile"
+path = "benches/graph/mem_profile.rs"
+harness = false
+
+[[bench]]
+name = "embed"
+path = "benches/embed/embed.rs"
 harness = false
 
 [[bin]]

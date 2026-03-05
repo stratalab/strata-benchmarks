@@ -238,7 +238,7 @@ fn bench_event_append(db: &BenchDb, n: usize, fill_level: usize) -> FillResult {
         "data".to_string(),
         Value::Bytes(vec![0x45; BENCH_VALUE_SIZE]),
     );
-    let payload = Value::Object(payload_map);
+    let payload = Value::object(payload_map);
 
     run_bench("event_append", fill_level, n, || {
         db.db.event_append("bench_stream", payload.clone()).unwrap();
@@ -249,7 +249,7 @@ fn bench_event_read(db: &BenchDb, n: usize, fill_level: usize) -> FillResult {
     // Pre-append 1000 events
     let mut payload_map = HashMap::new();
     payload_map.insert("data".to_string(), Value::Int(0));
-    let payload = Value::Object(payload_map);
+    let payload = Value::object(payload_map);
     for _ in 0..1000u64 {
         db.db
             .event_append("read_stream", payload.clone())

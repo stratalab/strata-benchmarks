@@ -106,30 +106,7 @@ fn parse_args() -> Config {
 // ---------------------------------------------------------------------------
 
 fn load_graph(db: &BenchDb, dataset: &LdbcDataset) -> std::time::Duration {
-    let start = Instant::now();
-
-    db.db.graph_create("ldbc").expect("graph_create failed");
-
-    for &vid in &dataset.vertices {
-        db.db
-            .graph_add_node("ldbc", &vid.to_string(), None, None)
-            .expect("graph_add_node failed");
-    }
-
-    for &(src, dst) in &dataset.edges {
-        db.db
-            .graph_add_edge(
-                "ldbc",
-                &src.to_string(),
-                &dst.to_string(),
-                "E",
-                None,
-                None,
-            )
-            .expect("graph_add_edge failed");
-    }
-
-    start.elapsed()
+    ldbc::load_graph_into_strata(&db.db, dataset)
 }
 
 // ---------------------------------------------------------------------------
@@ -590,6 +567,9 @@ fn write_markdown_report(
 // ---------------------------------------------------------------------------
 
 fn main() {
+    // Init tracing subscriber so strata-engine profiling logs are visible.
+    tracing_subscriber::fmt().init();
+
     let config = parse_args();
     print_hardware_info();
 

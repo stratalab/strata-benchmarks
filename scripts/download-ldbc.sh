@@ -52,7 +52,7 @@ for name in "${DATASETS[@]}"; do
 
     echo "==> Decompressing $name..."
     mkdir -p "$dest"
-    zstd -d "$archive" --stdout | tar xf - -C "$dest" --strip-components=1
+    zstd -d "$archive" --stdout | tar xf - -C "$dest"
 
     rm -f "$archive"
 

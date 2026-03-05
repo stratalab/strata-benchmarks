@@ -24,8 +24,29 @@ target
 # Benchmark result JSON files (keep .gitkeep)
 results/*.json
 
+# Tagged baseline snapshots (created by scripts/run-benchmarks.sh --tag)
+baselines/
+
 # Downloaded LDBC datasets (large, fetch with scripts/download-ldbc.sh)
 data/graph/graph500-*
+
+# Downloaded STS-B dataset (fetch with scripts/download-stsb.sh)
+data/stsb/
+
+# Downloaded graph datasets (non-graph500)
+data/graph/cit-Patents/
+data/graph/dota-league/
+data/graph/kgs/
+data/graph/wiki-Talk/
+
+# fastembed model cache (auto-downloaded)
+.fastembed_cache/
+
+# Generated BFS reports
+results/*.md
+
+# Stale result files at repo root
+*.json
 
 # Added by cargo
 

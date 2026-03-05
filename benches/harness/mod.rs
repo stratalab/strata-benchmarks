@@ -337,7 +337,7 @@ pub fn event_payload() -> Value {
         let val = format!("benchmark_event_payload_value_{:0>30}", j);
         map.insert(field, Value::String(val));
     }
-    Value::Object(map)
+    Value::object(map)
 }
 
 /// Generate a 10-field, 3-level nested JSON document.
@@ -349,7 +349,7 @@ pub fn json_document(i: u64) -> Value {
     map.insert("active".to_string(), Value::Bool(i % 2 == 0));
     map.insert(
         "tags".to_string(),
-        Value::Array(vec![
+        Value::array(vec![
             Value::String("bench".to_string()),
             Value::String(format!("tag_{}", i % 10)),
         ]),
@@ -368,9 +368,9 @@ pub fn json_document(i: u64) -> Value {
     let mut mid = HashMap::new();
     mid.insert("mid_score".to_string(), Value::Float((i as f64) * 1.5));
     mid.insert("mid_label".to_string(), Value::String(format!("mid_{}", i)));
-    mid.insert("mid_nested".to_string(), Value::Object(deep));
+    mid.insert("mid_nested".to_string(), Value::object(deep));
 
-    map.insert("metadata".to_string(), Value::Object(mid));
+    map.insert("metadata".to_string(), Value::object(mid));
 
     map.insert("version".to_string(), Value::Int(1));
     map.insert(
@@ -378,7 +378,7 @@ pub fn json_document(i: u64) -> Value {
         Value::String(format!("{:016x}", i.wrapping_mul(0x9E3779B97F4A7C15))),
     );
 
-    Value::Object(map)
+    Value::object(map)
 }
 
 /// Generate a deterministic 128-dimensional vector from an index.
