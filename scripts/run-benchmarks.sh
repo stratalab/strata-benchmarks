@@ -76,6 +76,7 @@ BENCHMARKS=(
     "graph_lcc|graph-lcc|-q|graph"
     "ann|ann|--quick -q|custom"
     "embed|embed|--quick -q|custom"
+    "scaling|scaling|--quick -q|custom"
 )
 
 # ── Build only the benchmarks we'll run ───────────────────────────────────────

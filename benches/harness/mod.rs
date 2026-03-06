@@ -262,6 +262,13 @@ pub struct BenchDb {
     _temp_dir: Option<TempDir>,
 }
 
+impl BenchDb {
+    /// Return the on-disk path for this database (None for cache-only).
+    pub fn db_path(&self) -> Option<&std::path::Path> {
+        self._temp_dir.as_ref().map(|td| td.path())
+    }
+}
+
 /// Create a database configured for the given durability mode.
 pub fn create_db(config: DurabilityConfig) -> BenchDb {
     print_hardware_info();
