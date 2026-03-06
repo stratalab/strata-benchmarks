@@ -605,7 +605,7 @@ fn run_throughput(config: &Config, recorder: &mut ResultRecorder) {
     let mut fe_model = if !config.strata_only {
         match TextEmbedding::try_new(
             InitOptions::new(EmbeddingModel::AllMiniLML6V2)
-                .with_show_download_progress(!config.quiet),
+                .with_show_download_progress(!config.quiet)
         ) {
             Ok(m) => Some(m),
             Err(e) => {
@@ -872,7 +872,7 @@ fn run_quality(config: &Config, recorder: &mut ResultRecorder) {
     if !config.strata_only {
         let mut fe_model = match TextEmbedding::try_new(
             InitOptions::new(EmbeddingModel::AllMiniLML6V2)
-                .with_show_download_progress(!config.quiet),
+                .with_show_download_progress(!config.quiet)
         ) {
             Ok(m) => m,
             Err(e) => {
