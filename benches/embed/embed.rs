@@ -584,25 +584,19 @@ fn fastembed_embed_batch(model: &mut TextEmbedding, texts: &[String]) -> Vec<Vec
 // ---------------------------------------------------------------------------
 
 fn run_throughput(config: &Config, recorder: &mut ResultRecorder) {
-    // Pre-check Strata embed availability once
+    // Pre-check Strata embed library availability (try miniLM as a known baseline)
     let strata_available = {
         let db = create_db(DurabilityConfig::Cache);
-        if let Err(e) = db.db.config_set("embed_model", &config.models[0]) {
-            if !config.quiet {
-                eprintln!("  WARNING: Cannot set embed_model: {}", e);
-            }
-            false
-        } else {
-            match strata_embed_check(&db.db) {
-                Ok(()) => true,
-                Err(e) => {
-                    if !config.quiet {
-                        eprintln!("  WARNING: Strata embedding unavailable: {}", e);
-                        eprintln!("  Skipping Strata throughput.");
-                        eprintln!();
-                    }
-                    false
+        let _ = db.db.config_set("embed_model", "miniLM");
+        match strata_embed_check(&db.db) {
+            Ok(()) => true,
+            Err(e) => {
+                if !config.quiet {
+                    eprintln!("  WARNING: Strata embedding unavailable: {}", e);
+                    eprintln!("  Skipping Strata throughput.");
+                    eprintln!();
                 }
+                false
             }
         }
     };
@@ -639,6 +633,18 @@ fn run_throughput(config: &Config, recorder: &mut ResultRecorder) {
             // --- Strata ---
             if strata_available {
                 for model_name in &config.models {
+                    // Check if this specific model is available
+                    let db = create_db(DurabilityConfig::Cache);
+                    if let Err(e) = db.db.config_set("embed_model", model_name) {
+                        eprintln!("  Skipping strata model '{}': {}", model_name, e);
+                        continue;
+                    }
+                    if let Err(e) = strata_embed_check(&db.db) {
+                        eprintln!("  Skipping strata model '{}': {}", model_name, e);
+                        continue;
+                    }
+                    drop(db);
+
                     for &scale in &config.scales {
                         let n_texts = scale.min(texts.len());
                         let bench_texts = &texts[..n_texts];
@@ -801,24 +807,34 @@ fn run_quality(config: &Config, recorder: &mut ResultRecorder) {
     }
 
     // --- Strata quality ---
-    // Check Strata availability once
+    // Check Strata embed library availability (try miniLM as a known baseline)
     let strata_available = {
         let db = create_db(DurabilityConfig::Cache);
-        let _ = db.db.config_set("embed_model", &config.models[0]);
+        let _ = db.db.config_set("embed_model", "miniLM");
         strata_embed_check(&db.db).is_ok()
     };
 
     if strata_available {
         for model_name in &config.models {
             let db = create_db(DurabilityConfig::Cache);
-            db.db
-                .config_set("embed_model", model_name)
-                .expect("failed to set embed_model");
+            if let Err(e) = db.db.config_set("embed_model", model_name) {
+                eprintln!("  Skipping strata quality for '{}': {}", model_name, e);
+                continue;
+            }
+            if let Err(e) = strata_embed_check(&db.db) {
+                eprintln!("  Skipping strata quality for '{}': {}", model_name, e);
+                continue;
+            }
 
             let embed_start = Instant::now();
             let refs: Vec<&str> = unique_sentences.iter().map(|s| s.as_str()).collect();
-            let embeddings = strata_embed_batch(&db.db, &refs)
-                .expect("strata embed_batch failed during quality benchmark");
+            let embeddings = match strata_embed_batch(&db.db, &refs) {
+                Ok(e) => e,
+                Err(e) => {
+                    eprintln!("  Strata quality for '{}' failed: {}", model_name, e);
+                    continue;
+                }
+            };
             let embed_time = embed_start.elapsed();
 
             // Compute cosine similarities
