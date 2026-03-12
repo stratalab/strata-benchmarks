@@ -187,6 +187,33 @@ fn effective_scales(tier: Tier, config: &Config) -> Vec<usize> {
     }
 }
 
+/// Determine effective sample_ops for a given operation and scale.
+/// Expensive operations (vector search, graph BFS, scan) get fewer samples
+/// at large scales to keep runtime reasonable.
+fn effective_sample_ops(tier: Tier, op: &str, scale: usize, config: &Config) -> usize {
+    let base = config.sample_ops;
+
+    let is_expensive = matches!(
+        (tier, op),
+        (Tier::Vector, "search") | (Tier::Graph, "bfs") | (Tier::Kv, "scan")
+    );
+
+    if !is_expensive {
+        return base;
+    }
+
+    // Scale down: 100K or less = full, 1M = 1/10, 10M+ = 1/100
+    if scale <= 100_000 {
+        base
+    } else if scale <= 1_000_000 {
+        (base / 10).max(100)
+    } else if scale <= 10_000_000 {
+        (base / 100).max(50)
+    } else {
+        (base / 1000).max(10)
+    }
+}
+
 // =============================================================================
 // Data Generators
 // =============================================================================
@@ -650,15 +677,34 @@ fn run_kv_random_write(db: &BenchDb, scale: usize, config: &Config) -> ScaleResu
 }
 
 fn run_kv_scan(db: &BenchDb, scale: usize, config: &Config) -> ScaleResult {
-    let n = config.sample_ops;
+    let n = effective_sample_ops(Tier::Kv, "scan", scale, config);
+    let mut rng = Lcg::new(123);
+
+    // Scan a fixed window of ~100 keys from a random starting point.
+    // Keys are "scale:XXXXXXXXXXXX" (12 digits). We pick a random offset
+    // and use a prefix that matches a narrow range of keys.
+    // E.g., for offset 42300, prefix "scale:000000042300" matches exactly 1 key,
+    // but "scale:0000000423" matches keys 42300-42399 (~100 keys).
+    let prefix_digits = if scale <= 100 {
+        // At tiny scales, just scan everything
+        6
+    } else {
+        // Trim last 2 digits to get ~100-key windows
+        let total_digits = 12;
+        total_digits - 2
+    };
 
     let snap_before = snapshot_resources(db);
     let mut latencies = Vec::with_capacity(n);
     let wall = Instant::now();
 
     for _ in 0..n {
+        let idx = rng.next_bounded(scale as u64);
+        // Build prefix: "scale:" + zero-padded idx truncated to prefix_digits
+        let full_key = format!("{:012}", idx);
+        let prefix = format!("scale:{}", &full_key[..prefix_digits]);
         let t = Instant::now();
-        let _ = db.db.kv_list(Some("scale:"));
+        let _ = db.db.kv_list(Some(&prefix));
         latencies.push(t.elapsed());
     }
 
@@ -793,7 +839,7 @@ fn run_vector_load(db: &BenchDb, scale: usize, config: &Config) -> ScaleResult {
 }
 
 fn run_vector_search(db: &BenchDb, scale: usize, config: &Config) -> ScaleResult {
-    let n = config.sample_ops;
+    let n = effective_sample_ops(Tier::Vector, "search", scale, config);
     let mut rng = Lcg::new(55);
 
     let snap_before = snapshot_resources(db);
@@ -872,7 +918,7 @@ fn run_graph_load(db: &BenchDb, scale: usize, config: &Config) -> ScaleResult {
 }
 
 fn run_graph_bfs(db: &BenchDb, scale: usize, config: &Config) -> ScaleResult {
-    let n = config.sample_ops;
+    let n = effective_sample_ops(Tier::Graph, "bfs", scale, config);
     let mut rng = Lcg::new(33);
 
     let snap_before = snapshot_resources(db);
@@ -990,6 +1036,14 @@ fn fmt_time(secs: f64) -> String {
     }
 }
 
+fn fmt_ops_sec(ops: f64) -> String {
+    if ops < 1.0 {
+        format!("{:.2}", ops)
+    } else {
+        fmt_num(ops as u64)
+    }
+}
+
 fn fmt_size(mb: f64) -> String {
     if mb < 1.0 {
         format!("{:.0} KB", mb * 1024.0)
@@ -1018,7 +1072,7 @@ fn print_load_row(r: &ScaleResult) {
     eprintln!(
         "  {:>12}  {:>11}  {:>8}  {:>10}  {:>10}  {:>5.1}x  {:>10}  {:>10}  {:>10}  {:>10}  {:>12}  {:>12}",
         fmt_scale(r.scale),
-        fmt_num(r.ops_per_sec as u64),
+        fmt_ops_sec(r.ops_per_sec),
         fmt_time(r.total_time_secs),
         fmt_size(r.rss_mb),
         fmt_size(r.disk_mb),
@@ -1049,7 +1103,7 @@ fn print_latency_row(r: &ScaleResult) {
     eprintln!(
         "  {:>12}  {:>11}  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}  {:>10}",
         fmt_scale(r.scale),
-        fmt_num(r.ops_per_sec as u64),
+        fmt_ops_sec(r.ops_per_sec),
         fmt_duration(r.p50),
         fmt_duration(r.p95),
         fmt_duration(r.p99),
@@ -1067,7 +1121,7 @@ fn print_quiet(r: &ScaleResult) {
             r.tier.label(),
             r.operation,
             fmt_scale(r.scale),
-            fmt_num(r.ops_per_sec as u64),
+            fmt_ops_sec(r.ops_per_sec),
             fmt_time(r.total_time_secs),
             fmt_size(r.rss_mb),
             fmt_size(r.disk_mb),
@@ -1083,7 +1137,7 @@ fn print_quiet(r: &ScaleResult) {
             r.tier.label(),
             r.operation,
             fmt_scale(r.scale),
-            fmt_num(r.ops_per_sec as u64),
+            fmt_ops_sec(r.ops_per_sec),
             fmt_duration(r.p50),
             fmt_duration(r.p99),
             fmt_num(r.resources.major_faults),
