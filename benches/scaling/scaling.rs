@@ -18,7 +18,7 @@
 mod harness;
 
 use harness::recorder::ResultRecorder;
-use harness::{create_db, print_hardware_info, BenchDb, DurabilityConfig};
+use harness::{create_db, open_existing_db, print_hardware_info, BenchDb, DurabilityConfig};
 use std::collections::HashMap;
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -59,6 +59,7 @@ struct Config {
     csv: bool,
     quiet: bool,
     quick: bool,
+    db_path: Option<String>,
 }
 
 const QUICK_SCALES: &[usize] = &[1_000, 10_000, 100_000];
@@ -83,6 +84,7 @@ fn parse_args() -> Config {
         csv: false,
         quiet: false,
         quick: false,
+        db_path: None,
     };
 
     let mut i = 1;
@@ -152,6 +154,12 @@ fn parse_args() -> Config {
                     config.batch_size = args[i].parse().unwrap_or(50_000);
                 }
             }
+            "--db-path" => {
+                i += 1;
+                if i < args.len() {
+                    config.db_path = Some(args[i].clone());
+                }
+            }
             "--csv" => config.csv = true,
             "-q" => config.quiet = true,
             _ => {}
@@ -219,7 +227,7 @@ fn effective_sample_ops(tier: Tier, op: &str, scale: usize, config: &Config) -> 
 // =============================================================================
 
 fn scaling_kv_key(i: u64) -> String {
-    format!("scale:{:012}", i)
+    format!("{:08x}", i)
 }
 
 /// LCG-seeded pseudo-random bytes to prevent compression artifacts.
@@ -680,18 +688,15 @@ fn run_kv_scan(db: &BenchDb, scale: usize, config: &Config) -> ScaleResult {
     let n = effective_sample_ops(Tier::Kv, "scan", scale, config);
     let mut rng = Lcg::new(123);
 
-    // Scan a fixed window of ~100 keys from a random starting point.
-    // Keys are "scale:XXXXXXXXXXXX" (12 digits). We pick a random offset
-    // and use a prefix that matches a narrow range of keys.
-    // E.g., for offset 42300, prefix "scale:000000042300" matches exactly 1 key,
-    // but "scale:0000000423" matches keys 42300-42399 (~100 keys).
-    let prefix_digits = if scale <= 100 {
-        // At tiny scales, just scan everything
-        6
+    // Scan a fixed window of ~256 keys from a random starting point.
+    // Keys are "{:08x}" (8 hex chars). Truncate last 2 hex digits to get
+    // a prefix matching ~256 keys (one 8-bit hex bucket).
+    let prefix_len = if scale <= 256 {
+        // At tiny scales, scan everything (empty prefix)
+        0
     } else {
-        // Trim last 2 digits to get ~100-key windows
-        let total_digits = 12;
-        total_digits - 2
+        // Trim last 2 hex digits → ~256-key windows
+        6
     };
 
     let snap_before = snapshot_resources(db);
@@ -700,11 +705,10 @@ fn run_kv_scan(db: &BenchDb, scale: usize, config: &Config) -> ScaleResult {
 
     for _ in 0..n {
         let idx = rng.next_bounded(scale as u64);
-        // Build prefix: "scale:" + zero-padded idx truncated to prefix_digits
-        let full_key = format!("{:012}", idx);
-        let prefix = format!("scale:{}", &full_key[..prefix_digits]);
+        let full_key = scaling_kv_key(idx);
+        let prefix = if prefix_len > 0 { &full_key[..prefix_len] } else { "" };
         let t = Instant::now();
-        let _ = db.db.kv_list(Some(&prefix));
+        let _ = db.db.kv_list(Some(prefix));
         latencies.push(t.elapsed());
     }
 
@@ -1288,7 +1292,7 @@ fn record_result(recorder: &mut ResultRecorder, r: &ScaleResult, config: &Config
 
 fn operations_for_tier(tier: Tier) -> Vec<&'static str> {
     match tier {
-        Tier::Kv => vec!["random_read", "random_write", "scan"],
+        Tier::Kv => vec!["scan"],
         Tier::Json => vec!["random_read", "path_read", "path_update"],
         Tier::Vector => vec!["search"],
         Tier::Graph => vec!["bfs"],
@@ -1390,8 +1394,11 @@ fn main() {
         }
 
         for &scale in &scales {
-            // Fresh DB per (tier, scale)
-            let db = create_db(config.durability);
+            let db = if let Some(ref path) = config.db_path {
+                open_existing_db(path)
+            } else {
+                create_db(config.durability)
+            };
 
             if !config.csv && !config.quiet {
                 eprintln!(
@@ -1401,15 +1408,17 @@ fn main() {
                 );
             }
 
-            // Phase 1: Load
-            let load_result = run_load(&db, tier, scale, &config);
-            if config.csv {
-                print_csv_row(&load_result);
-            } else if config.quiet {
-                print_quiet(&load_result);
+            // Phase 1: Load (skip when using pre-loaded DB)
+            if config.db_path.is_none() {
+                let load_result = run_load(&db, tier, scale, &config);
+                if config.csv {
+                    print_csv_row(&load_result);
+                } else if config.quiet {
+                    print_quiet(&load_result);
+                }
+                record_result(&mut recorder, &load_result, &config);
+                op_results.get_mut("load").unwrap().push(load_result);
             }
-            record_result(&mut recorder, &load_result, &config);
-            op_results.get_mut("load").unwrap().push(load_result);
 
             // Phase 2: Measure each operation
             for &op in operations_for_tier(tier).iter() {

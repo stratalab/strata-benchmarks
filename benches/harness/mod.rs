@@ -269,6 +269,15 @@ impl BenchDb {
     }
 }
 
+/// Open an existing database at a fixed path (no temp dir, won't be cleaned up).
+pub fn open_existing_db<P: AsRef<std::path::Path>>(path: P) -> BenchDb {
+    let strata = Strata::open(path).expect("failed to open existing database");
+    BenchDb {
+        db: strata,
+        _temp_dir: None,
+    }
+}
+
 /// Create a database configured for the given durability mode.
 pub fn create_db(config: DurabilityConfig) -> BenchDb {
     print_hardware_info();

@@ -6,7 +6,7 @@ description = "Black-box tests and performance benchmarks for StrataDB"
 license = "Apache-2.0"
 
 [dependencies]
-stratadb = { git = "https://github.com/stratalab/strata-core.git", branch = "main", features = ["embed"] }
+stratadb = { path = "../strata-core" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tempfile = "3.8"
@@ -18,6 +18,24 @@ petgraph = "0.7"
 tempfile = "3.8"
 tracing-subscriber = "0.3"
 fastembed = "5"
+redb = "2"
+heed = "0.22"
+rocksdb = { version = "0.22.0", default-features = false, features = ["lz4"] }
+sled = "0.34.7"
+fjall = "=2.11"
+rusqlite = { version = "0.38.0", features = ["bundled"] }
+fastrand = "2.0.0"
+walkdir = "2.5.0"
+byte-unit = "5.1.6"
+comfy-table = "7.0.1"
+ctrlc = "3.2.3"
+env_logger = "0.11"
+hex = "0.4"
+redis = "0.27"
+mongodb = "3"
+qdrant-client = "1"
+neo4rs = "0.8"
+tokio = { version = "1", features = ["full"] }
 
 [[bench]]
 name = "kv"
@@ -123,6 +141,29 @@ harness = false
 name = "scaling"
 path = "benches/scaling/scaling.rs"
 harness = false
+
+[[bench]]
+name = "arrow"
+path = "benches/arrow/arrow.rs"
+harness = false
+
+[[bench]]
+name = "redb_benchmark"
+path = "benches/redb-bench/redb_benchmark.rs"
+harness = false
+
+[[bench]]
+name = "industry_compare"
+path = "benches/load-compare/industry_compare.rs"
+harness = false
+
+[[bench]]
+name = "branch_isolation"
+path = "benches/branch/branch_isolation.rs"
+harness = false
+
+[profile.bench]
+debug = true
 
 [[bin]]
 name = "bench-compare"

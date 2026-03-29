@@ -22,6 +22,7 @@ TAG=""
 SKIP_GRAPH=false
 SKIP_CRITERION=false
 SKIP_CONCURRENCY=false
+SKIP_INDUSTRY=false
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -41,6 +42,9 @@ while [ $# -gt 0 ]; do
             ;;
         --skip-concurrency)
             SKIP_CONCURRENCY=true
+            ;;
+        --skip-industry)
+            SKIP_INDUSTRY=true
             ;;
         -h|--help)
             head -11 "$0" | tail -9
@@ -77,6 +81,10 @@ BENCHMARKS=(
     "ann|ann|--quick -q|custom"
     "embed|embed|--quick -q|custom"
     "scaling|scaling|--quick -q|custom"
+    "load_compare|load-compare|--quick -q|custom"
+    "arrow|arrow-export|--quick -q|custom"
+    "industry_compare|industry-compare|--quick -q|industry"
+    "branch_isolation|branch-isolation|--quick -q|custom"
 )
 
 # ── Build only the benchmarks we'll run ───────────────────────────────────────
@@ -89,6 +97,7 @@ for entry in "${BENCHMARKS[@]}"; do
     if [ "$SKIP_GRAPH" = true ] && [ "$group" = "graph" ]; then continue; fi
     if [ "$SKIP_CRITERION" = true ] && [ "$group" = "criterion" ]; then continue; fi
     if [ "$SKIP_CONCURRENCY" = true ] && [ "$group" = "concurrency" ]; then continue; fi
+    if [ "$SKIP_INDUSTRY" = true ] && [ "$group" = "industry" ]; then continue; fi
     build_args+=(--bench "$name")
 done
 if ! cargo build --release "${build_args[@]}" 2>&1; then
@@ -112,6 +121,7 @@ for entry in "${BENCHMARKS[@]}"; do
     if [ "$SKIP_GRAPH" = true ] && [ "$group" = "graph" ]; then continue; fi
     if [ "$SKIP_CRITERION" = true ] && [ "$group" = "criterion" ]; then continue; fi
     if [ "$SKIP_CONCURRENCY" = true ] && [ "$group" = "concurrency" ]; then continue; fi
+    if [ "$SKIP_INDUSTRY" = true ] && [ "$group" = "industry" ]; then continue; fi
     total=$((total + 1))
 done
 
@@ -127,6 +137,7 @@ for entry in "${BENCHMARKS[@]}"; do
     if [ "$SKIP_GRAPH" = true ] && [ "$group" = "graph" ]; then continue; fi
     if [ "$SKIP_CRITERION" = true ] && [ "$group" = "criterion" ]; then continue; fi
     if [ "$SKIP_CONCURRENCY" = true ] && [ "$group" = "concurrency" ]; then continue; fi
+    if [ "$SKIP_INDUSTRY" = true ] && [ "$group" = "industry" ]; then continue; fi
 
     idx=$((idx + 1))
     printf "[%d/%d] Running %s..." "$idx" "$total" "$name"
