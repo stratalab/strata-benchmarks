@@ -162,6 +162,16 @@ name = "branch_isolation"
 path = "benches/branch/branch_isolation.rs"
 harness = false
 
+[[bench]]
+name = "ycsb_compare"
+path = "benches/ycsb/ycsb_compare.rs"
+harness = false
+
+[[bench]]
+name = "memory_efficiency"
+path = "benches/memory-efficiency/memory_efficiency.rs"
+harness = false
+
 [profile.bench]
 debug = true
 
