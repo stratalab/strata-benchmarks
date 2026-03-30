@@ -769,6 +769,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8d4a3bb8b1e0c1050499d1815f5ab16d04f0959b233085fb31653fbfc9d98f9"
 
 [[package]]
+name = "cmake"
+version = "0.1.58"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0f78a02292a74a88ac736019ab962ece0bc380e3f977bf72e376c5d78ff0678"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "color_quant"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4985,7 +4994,6 @@ dependencies = [
 [[package]]
 name = "strata-concurrency"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "chrono",
  "dashmap 5.5.3",
@@ -5002,7 +5010,6 @@ dependencies = [
 [[package]]
 name = "strata-core"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "bincode",
  "serde",
@@ -5015,7 +5022,6 @@ dependencies = [
 [[package]]
 name = "strata-durability"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "aes-gcm",
  "crc32fast",
@@ -5038,13 +5044,13 @@ dependencies = [
 [[package]]
 name = "strata-engine"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "base64 0.21.7",
  "byteorder",
  "chrono",
  "dashmap 5.5.3",
  "fs2",
+ "libc",
  "memmap2",
  "once_cell",
  "parking_lot 0.12.5",
@@ -5068,7 +5074,6 @@ dependencies = [
 [[package]]
 name = "strata-executor"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "base64 0.21.7",
  "chrono",
@@ -5092,7 +5097,6 @@ dependencies = [
 [[package]]
 name = "strata-graph"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "dashmap 5.5.3",
  "once_cell",
@@ -5106,19 +5110,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "strata-inference"
+version = "0.6.0"
+dependencies = [
+ "cmake",
+ "sha2",
+ "thiserror 1.0.69",
+ "tracing",
+ "ureq 3.2.0",
+]
+
+[[package]]
 name = "strata-intelligence"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "strata-core",
  "strata-engine",
+ "strata-inference",
  "tracing",
 ]
 
 [[package]]
 name = "strata-search"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "rayon",
  "serde",
@@ -5133,7 +5147,6 @@ dependencies = [
 [[package]]
 name = "strata-security"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "serde",
  "zeroize",
@@ -5142,7 +5155,6 @@ dependencies = [
 [[package]]
 name = "strata-storage"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "arc-swap",
  "bincode",
@@ -5161,7 +5173,6 @@ dependencies = [
 [[package]]
 name = "strata-vector"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "byteorder",
  "dashmap 5.5.3",
@@ -5187,7 +5198,6 @@ dependencies = [
 [[package]]
 name = "stratadb"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "serde_json",
  "strata-executor",
@@ -5960,14 +5970,17 @@ checksum = "fdc97a28575b85cfedf2a7e7d3cc64b3e11bd8ac766666318003abbacc7a21fc"
 dependencies = [
  "base64 0.22.1",
  "der",
+ "flate2",
  "log",
  "native-tls",
  "percent-encoding",
+ "rustls",
  "rustls-pki-types",
  "socks",
  "ureq-proto",
  "utf-8",
  "webpki-root-certs",
+ "webpki-roots 1.0.6",
 ]
 
 [[package]]
