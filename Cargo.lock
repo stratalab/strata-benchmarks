@@ -4985,6 +4985,7 @@ dependencies = [
 [[package]]
 name = "strata-concurrency"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "chrono",
  "dashmap 5.5.3",
@@ -5001,6 +5002,7 @@ dependencies = [
 [[package]]
 name = "strata-core"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "bincode",
  "serde",
@@ -5013,6 +5015,7 @@ dependencies = [
 [[package]]
 name = "strata-durability"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "aes-gcm",
  "crc32fast",
@@ -5035,6 +5038,7 @@ dependencies = [
 [[package]]
 name = "strata-engine"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "base64 0.21.7",
  "byteorder",
@@ -5064,6 +5068,7 @@ dependencies = [
 [[package]]
 name = "strata-executor"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "base64 0.21.7",
  "chrono",
@@ -5087,6 +5092,7 @@ dependencies = [
 [[package]]
 name = "strata-graph"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "dashmap 5.5.3",
  "once_cell",
@@ -5102,6 +5108,7 @@ dependencies = [
 [[package]]
 name = "strata-intelligence"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "strata-core",
  "strata-engine",
@@ -5111,6 +5118,7 @@ dependencies = [
 [[package]]
 name = "strata-search"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "rayon",
  "serde",
@@ -5125,6 +5133,7 @@ dependencies = [
 [[package]]
 name = "strata-security"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "serde",
  "zeroize",
@@ -5133,6 +5142,7 @@ dependencies = [
 [[package]]
 name = "strata-storage"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "arc-swap",
  "bincode",
@@ -5151,6 +5161,7 @@ dependencies = [
 [[package]]
 name = "strata-vector"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "byteorder",
  "dashmap 5.5.3",
@@ -5176,6 +5187,7 @@ dependencies = [
 [[package]]
 name = "stratadb"
 version = "0.6.0"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
 dependencies = [
  "serde_json",
  "strata-executor",
