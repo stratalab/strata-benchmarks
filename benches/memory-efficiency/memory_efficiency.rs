@@ -31,8 +31,6 @@ use tempfile::TempDir;
 const DEFAULT_RECORDS: usize = 500_000;
 const QUICK_RECORDS: usize = 50_000;
 const READ_OPS: usize = 50_000;
-const SCAN_OPS: usize = 5_000;
-const SCAN_LIMIT: u64 = 10;
 
 struct Profile {
     label: &'static str,
@@ -138,7 +136,6 @@ struct ProfileResult {
     records: usize,
     write_ops_sec: f64,
     read_ops_sec: f64,
-    scan_ops_sec: f64,
     peak_rss_mb: f64,
     disk_mb: f64,
 }
@@ -167,15 +164,7 @@ fn bench_profile(profile: &Profile, records: usize) -> ProfileResult {
     let read_elapsed = read_start.elapsed();
     let read_ops_sec = READ_OPS as f64 / read_elapsed.as_secs_f64();
 
-    // Phase 3: Range scans
-    let mut rng = Lcg::new(0xCAFE);
-    let scan_start = Instant::now();
-    for _ in 0..SCAN_OPS {
-        let idx = rng.next_bounded(records as u64);
-        let _ = db.kv_scan(Some(&kv_key(idx)), Some(SCAN_LIMIT));
-    }
-    let scan_elapsed = scan_start.elapsed();
-    let scan_ops_sec = SCAN_OPS as f64 / scan_elapsed.as_secs_f64();
+    // Scans disabled — blocked on strata-core#2183 (~20 ops/s)
 
     let peak_rss = rss_mb();
     let disk = dir_size_mb(dir.path());
@@ -186,7 +175,6 @@ fn bench_profile(profile: &Profile, records: usize) -> ProfileResult {
         records,
         write_ops_sec,
         read_ops_sec,
-        scan_ops_sec,
         peak_rss_mb: peak_rss,
         disk_mb: disk,
     }
@@ -198,19 +186,19 @@ fn bench_profile(profile: &Profile, records: usize) -> ProfileResult {
 
 fn print_header() {
     eprintln!(
-        "  {:<12} {:>10} {:>12} {:>12} {:>12} {:>10} {:>10}",
-        "profile", "records", "write ops/s", "read ops/s", "scan ops/s", "RSS (MB)", "disk (MB)",
+        "  {:<12} {:>10} {:>12} {:>12} {:>10} {:>10}",
+        "profile", "records", "write ops/s", "read ops/s", "RSS (MB)", "disk (MB)",
     );
     eprintln!(
-        "  {:<12} {:>10} {:>12} {:>12} {:>12} {:>10} {:>10}",
-        "-------", "-------", "-----------", "----------", "----------", "--------", "---------",
+        "  {:<12} {:>10} {:>12} {:>12} {:>10} {:>10}",
+        "-------", "-------", "-----------", "----------", "--------", "---------",
     );
 }
 
 fn print_row(r: &ProfileResult) {
     eprintln!(
-        "  {:<12} {:>10} {:>12.0} {:>12.0} {:>12.0} {:>10.1} {:>10.1}",
-        r.label, r.records, r.write_ops_sec, r.read_ops_sec, r.scan_ops_sec, r.peak_rss_mb, r.disk_mb,
+        "  {:<12} {:>10} {:>12.0} {:>12.0} {:>10.1} {:>10.1}",
+        r.label, r.records, r.write_ops_sec, r.read_ops_sec, r.peak_rss_mb, r.disk_mb,
     );
 }
 
@@ -304,7 +292,6 @@ fn main() {
         params.insert("records".into(), serde_json::json!(r.records));
         params.insert("write_ops_sec".into(), serde_json::json!(r.write_ops_sec));
         params.insert("read_ops_sec".into(), serde_json::json!(r.read_ops_sec));
-        params.insert("scan_ops_sec".into(), serde_json::json!(r.scan_ops_sec));
         params.insert("peak_rss_mb".into(), serde_json::json!(r.peak_rss_mb));
         params.insert("disk_mb".into(), serde_json::json!(r.disk_mb));
 
