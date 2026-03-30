@@ -16,23 +16,50 @@ use stratadb::{Strata, Value};
 #[allow(dead_code)]
 const X: TableDefinition<&[u8], &[u8]> = TableDefinition::new("x");
 
-const READ_ITERATIONS: usize = 2;
-// Reduced from 5M to 100K — Strata's kv_scan is ~20 ops/s at 5M (see strata-core#2183).
-// Restore to 5_000_000 once scan throughput is fixed.
-const BULK_ELEMENTS: usize = 100_000;
-const INDIVIDUAL_WRITES: usize = 1_000;
-const NOSYNC_WRITES: usize = 10_000;
-const BATCH_WRITES: usize = 100;
-const BATCH_SIZE: usize = 1000;
-const SCAN_ITERATIONS: usize = 2;
-const NUM_READS: usize = 100_000;
-const NUM_SCANS: usize = 100;
-const SCAN_LEN: usize = 10;
 const KEY_SIZE: usize = 24;
 const VALUE_SIZE: usize = 150;
 const RNG_SEED: u64 = 3;
+const DEFAULT_SCAN_LEN: usize = 10;
 
 pub const CACHE_SIZE: usize = 4 * 1_024 * 1_024 * 1_024; // 4GB
+
+/// Configurable benchmark parameters. Derived from --records flag.
+#[derive(Clone)]
+pub struct BenchConfig {
+    pub bulk_elements: usize,
+    pub individual_writes: usize,
+    pub nosync_writes: usize,
+    pub batch_writes: usize,
+    pub batch_size: usize,
+    pub num_reads: usize,
+    pub num_scans: usize,
+    pub scan_len: usize,
+    pub read_iterations: usize,
+    pub scan_iterations: usize,
+}
+
+impl BenchConfig {
+    /// Create a config scaled to the given record count.
+    pub fn for_records(records: usize) -> Self {
+        Self {
+            bulk_elements: records,
+            individual_writes: (records / 100).max(100).min(1_000),
+            nosync_writes: (records / 10).max(100).min(50_000),
+            batch_writes: 100,
+            batch_size: (records / 100).max(100).min(1_000),
+            num_reads: records.min(1_000_000),
+            // Scans are very slow in Strata (strata-core#2183), keep count low
+            num_scans: 100,
+            scan_len: 10,
+            read_iterations: 2,
+            scan_iterations: 2,
+        }
+    }
+
+    pub fn default() -> Self {
+        Self::for_records(100_000)
+    }
+}
 
 // XXX: Awful hack because Rocksdb seems to have unbounded memory usage for bulk writes
 const ROCKSDB_MAX_WRITES_PER_TXN: u64 = 100_000;
@@ -69,10 +96,11 @@ fn make_rng_shards(shards: usize, elements: usize) -> Vec<fastrand::Rng> {
 fn nosync_writes<T: BenchDatabase + Send + Sync>(
     connection: &T::C<'_>,
     rng: &mut fastrand::Rng,
+    count: usize,
 ) -> ResultType {
     let start = Instant::now();
     {
-        for _ in 0..NOSYNC_WRITES {
+        for _ in 0..count {
             let mut txn = connection.write_transaction();
             let mut inserter = txn.get_inserter();
             let (key, value) = random_pair(rng);
@@ -87,7 +115,7 @@ fn nosync_writes<T: BenchDatabase + Send + Sync>(
     println!(
         "{}: Wrote {} individual items in {}ms, with nosync",
         T::db_type_name(),
-        NOSYNC_WRITES,
+        count,
         duration.as_millis()
     );
 
@@ -97,6 +125,7 @@ fn nosync_writes<T: BenchDatabase + Send + Sync>(
 pub fn benchmark<T: BenchDatabase + Send + Sync>(
     mut db: T,
     path: &Path,
+    cfg: &BenchConfig,
 ) -> Vec<(String, ResultType)> {
     let mut rng = make_rng();
     let mut results = Vec::new();
@@ -106,7 +135,7 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
     let mut txn = connection.write_transaction();
     let mut inserter = txn.get_inserter();
     {
-        for _ in 0..BULK_ELEMENTS {
+        for _ in 0..cfg.bulk_elements {
             let (key, value) = random_pair(&mut rng);
             inserter.insert(&key, &value).unwrap();
         }
@@ -119,14 +148,14 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
     println!(
         "{}: Bulk loaded {} items in {}ms",
         T::db_type_name(),
-        BULK_ELEMENTS,
+        cfg.bulk_elements,
         duration.as_millis()
     );
     results.push(("bulk load".to_string(), ResultType::Duration(duration)));
 
     let start = Instant::now();
     {
-        for _ in 0..INDIVIDUAL_WRITES {
+        for _ in 0..cfg.individual_writes {
             let mut txn = connection.write_transaction();
             let mut inserter = txn.get_inserter();
             let (key, value) = random_pair(&mut rng);
@@ -141,7 +170,7 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
     println!(
         "{}: Wrote {} individual items in {}ms",
         T::db_type_name(),
-        INDIVIDUAL_WRITES,
+        cfg.individual_writes,
         duration.as_millis()
     );
     results.push((
@@ -151,10 +180,10 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
 
     let start = Instant::now();
     {
-        for _ in 0..BATCH_WRITES {
+        for _ in 0..cfg.batch_writes {
             let mut txn = connection.write_transaction();
             let mut inserter = txn.get_inserter();
-            for _ in 0..BATCH_SIZE {
+            for _ in 0..cfg.batch_size {
                 let (key, value) = random_pair(&mut rng);
                 inserter.insert(&key, &value).unwrap();
             }
@@ -168,20 +197,20 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
     println!(
         "{}: Wrote {} batches of {} items in {}ms",
         T::db_type_name(),
-        BATCH_WRITES,
-        BATCH_SIZE,
+        cfg.batch_writes,
+        cfg.batch_size,
         duration.as_millis()
     );
     results.push(("batch writes".to_string(), ResultType::Duration(duration)));
 
     if connection.set_sync(false) {
-        let result = nosync_writes::<T>(&connection, &mut rng);
+        let result = nosync_writes::<T>(&connection, &mut rng, cfg.nosync_writes);
         results.push(("nosync writes".to_string(), result));
     } else {
         // Still perform the writes to make sure that future benchmarks aren't skewed
         let mut txn = connection.write_transaction();
         let mut inserter = txn.get_inserter();
-        for _ in 0..NOSYNC_WRITES {
+        for _ in 0..cfg.nosync_writes {
             let (key, value) = random_pair(&mut rng);
             inserter.insert(&key, &value).unwrap();
         }
@@ -191,7 +220,7 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
     }
     connection.set_sync(true);
 
-    let elements = BULK_ELEMENTS + INDIVIDUAL_WRITES + BATCH_SIZE * BATCH_WRITES + NOSYNC_WRITES;
+    let elements = cfg.bulk_elements + cfg.individual_writes + cfg.batch_size * cfg.batch_writes + cfg.nosync_writes;
     let txn = connection.read_transaction();
     {
         {
@@ -204,13 +233,13 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
             results.push(("len()".to_string(), ResultType::Duration(duration)));
         }
 
-        for _ in 0..READ_ITERATIONS {
+        for _ in 0..cfg.read_iterations {
             let mut rng = make_rng();
             let start = Instant::now();
             let mut checksum = 0u64;
             let mut expected_checksum = 0u64;
             let reader = txn.get_reader();
-            for _ in 0..NUM_READS {
+            for _ in 0..cfg.num_reads {
                 let (key, value) = random_pair(&mut rng);
                 let result = reader.get(&key).unwrap();
                 checksum += result.as_ref()[0] as u64;
@@ -222,21 +251,21 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
             println!(
                 "{}: Random read {} items in {}ms",
                 T::db_type_name(),
-                NUM_READS,
+                cfg.num_reads,
                 duration.as_millis()
             );
             results.push(("random reads".to_string(), ResultType::Duration(duration)));
         }
 
-        for _ in 0..SCAN_ITERATIONS {
+        for _ in 0..cfg.scan_iterations {
             let mut rng = make_rng();
             let start = Instant::now();
             let reader = txn.get_reader();
             let mut value_sum = 0;
-            for _ in 0..NUM_SCANS {
+            for _ in 0..cfg.num_scans {
                 let (key, _value) = random_pair(&mut rng);
                 let mut iter = reader.range_from(&key);
-                for _ in 0..SCAN_LEN {
+                for _ in 0..cfg.scan_len {
                     if let Some((_, value)) = iter.next() {
                         value_sum += value.as_ref()[0];
                     } else {
@@ -251,8 +280,8 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
             println!(
                 "{}: Random range read {} x {} elements in {}ms",
                 T::db_type_name(),
-                NUM_SCANS,
-                SCAN_LEN,
+                cfg.num_scans,
+                cfg.scan_len,
                 duration.as_millis()
             );
             results.push((
@@ -1631,7 +1660,7 @@ impl BenchReader for SqliteBenchReader<'_> {
             }
             // TODO: this is kind of cheating, but I don't feel like refactoring the benchmark
             // to handle rusqlite's Statement & MappedRows lifetimes
-            if results.len() > SCAN_LEN {
+            if results.len() > DEFAULT_SCAN_LEN {
                 break;
             }
         }
@@ -1803,7 +1832,7 @@ impl BenchReader for StrataBenchReader<'_> {
         let hex_key = bytes_to_hex(key);
         let pairs = self
             .db
-            .kv_scan(Some(&hex_key), Some((SCAN_LEN + 1) as u64))
+            .kv_scan(Some(&hex_key), Some((DEFAULT_SCAN_LEN + 1) as u64))
             .unwrap_or_default();
         let results: Vec<(Vec<u8>, Vec<u8>)> = pairs
             .into_iter()

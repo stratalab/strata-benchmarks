@@ -16,8 +16,28 @@ use tempfile::{NamedTempFile, TempDir};
 mod common;
 use common::*;
 
+fn parse_records() -> usize {
+    let args: Vec<String> = std::env::args().collect();
+    let mut i = 1;
+    while i < args.len() {
+        if args[i] == "--records" {
+            i += 1;
+            if i < args.len() {
+                return args[i].parse().unwrap_or(100_000);
+            }
+        }
+        i += 1;
+    }
+    100_000
+}
+
 fn main() {
     let _ = env_logger::try_init();
+    let records = parse_records();
+    let cfg = BenchConfig::for_records(records);
+
+    println!("=== redb benchmark: {} records ===\n", records);
+
     let tmpdir = current_dir().unwrap().join(".benchmark");
     fs::create_dir_all(&tmpdir).unwrap();
 
@@ -33,7 +53,7 @@ fn main() {
         let tmpdir_strata: TempDir = tempfile::tempdir_in(&tmpdir).unwrap();
         let db = stratadb::Strata::open(tmpdir_strata.path()).unwrap();
         let table = StrataBenchDatabase::new(db);
-        benchmark(table, tmpdir_strata.path())
+        benchmark(table, tmpdir_strata.path(), &cfg)
     };
 
     // ── redb ────────────────────────────────────────────────────────────────
@@ -44,7 +64,7 @@ fn main() {
             .create(tmpfile.path())
             .unwrap();
         let table = RedbBenchDatabase::new(&mut db);
-        benchmark(table, tmpfile.path())
+        benchmark(table, tmpfile.path(), &cfg)
     };
 
     // ── lmdb (heed) ─────────────────────────────────────────────────────────
@@ -57,7 +77,7 @@ fn main() {
                 .unwrap()
         };
         let table = HeedBenchDatabase::new(env);
-        benchmark(table, tempdir.path())
+        benchmark(table, tempdir.path(), &cfg)
     };
 
     // ── rocksdb ─────────────────────────────────────────────────────────────
@@ -89,7 +109,7 @@ fn main() {
 
         let db = rocksdb::OptimisticTransactionDB::open(&opts, tmpfile.path()).unwrap();
         let table = RocksdbBenchDatabase::new(&db);
-        benchmark(table, tmpfile.path())
+        benchmark(table, tmpfile.path(), &cfg)
     };
 
     // ── sled ────────────────────────────────────────────────────────────────
@@ -103,7 +123,7 @@ fn main() {
             .unwrap();
 
         let table = SledBenchDatabase::new(&db, tmpfile.path());
-        benchmark(table, tmpfile.path())
+        benchmark(table, tmpfile.path(), &cfg)
     };
 
     // ── fjall ───────────────────────────────────────────────────────────────
@@ -116,20 +136,20 @@ fn main() {
             .unwrap();
 
         let table = FjallBenchDatabase::new(&mut db);
-        benchmark(table, tmpfile.path())
+        benchmark(table, tmpfile.path(), &cfg)
     };
 
     // ── sqlite ──────────────────────────────────────────────────────────────
     let sqlite_results = {
         let tmpfile: NamedTempFile = NamedTempFile::new_in(&tmpdir).unwrap();
         let table = SqliteBenchDatabase::new(tmpfile.path());
-        benchmark(table, tmpfile.path())
+        benchmark(table, tmpfile.path(), &cfg)
     };
 
     // ── Redis (optional — skipped if server unavailable) ────────────────────
     let redis_results = RedisBenchDatabase::new("redis://127.0.0.1/").map(|table| {
         let tmpdir_redis: TempDir = tempfile::tempdir_in(&tmpdir).unwrap();
-        benchmark(table, tmpdir_redis.path())
+        benchmark(table, tmpdir_redis.path(), &cfg)
     });
     if redis_results.is_none() {
         println!("Redis: skipped (server not available at 127.0.0.1:6379)");
