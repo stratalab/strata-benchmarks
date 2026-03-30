@@ -48,8 +48,7 @@ impl BenchConfig {
             batch_writes: 100,
             batch_size: (records / 100).max(100).min(1_000),
             num_reads: records.min(1_000_000),
-            // Scans are very slow in Strata (strata-core#2183), keep count low
-            num_scans: 100,
+            num_scans: (records / 10).max(100).min(500_000),
             scan_len: 10,
             read_iterations: 2,
             scan_iterations: 2,

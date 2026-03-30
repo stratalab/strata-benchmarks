@@ -152,7 +152,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -163,7 +163,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -1337,7 +1337,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1494,7 +1494,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2523,7 +2523,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3205,7 +3205,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4485,7 +4485,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4893,7 +4893,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4985,7 +4985,7 @@ dependencies = [
 [[package]]
 name = "strata-concurrency"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "chrono",
  "dashmap 5.5.3",
@@ -5002,7 +5002,7 @@ dependencies = [
 [[package]]
 name = "strata-core"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "bincode",
  "serde",
@@ -5015,7 +5015,7 @@ dependencies = [
 [[package]]
 name = "strata-durability"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "aes-gcm",
  "crc32fast",
@@ -5038,7 +5038,7 @@ dependencies = [
 [[package]]
 name = "strata-engine"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "base64 0.21.7",
  "byteorder",
@@ -5068,7 +5068,7 @@ dependencies = [
 [[package]]
 name = "strata-executor"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "base64 0.21.7",
  "chrono",
@@ -5092,7 +5092,7 @@ dependencies = [
 [[package]]
 name = "strata-graph"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "dashmap 5.5.3",
  "once_cell",
@@ -5108,7 +5108,7 @@ dependencies = [
 [[package]]
 name = "strata-intelligence"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "strata-core",
  "strata-engine",
@@ -5118,7 +5118,7 @@ dependencies = [
 [[package]]
 name = "strata-search"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "rayon",
  "serde",
@@ -5133,7 +5133,7 @@ dependencies = [
 [[package]]
 name = "strata-security"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "serde",
  "zeroize",
@@ -5142,7 +5142,7 @@ dependencies = [
 [[package]]
 name = "strata-storage"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "arc-swap",
  "bincode",
@@ -5161,7 +5161,7 @@ dependencies = [
 [[package]]
 name = "strata-vector"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "byteorder",
  "dashmap 5.5.3",
@@ -5187,7 +5187,7 @@ dependencies = [
 [[package]]
 name = "stratadb"
 version = "0.6.0"
-source = "git+https://github.com/stratalab/strata-core.git?branch=main#944c0f1fd9e1b8d755819361eba7743df0609d9a"
+source = "git+https://github.com/stratalab/strata-core.git?branch=main#c59e37d800dc1260841d23955d15c9cb9b23626c"
 dependencies = [
  "serde_json",
  "strata-executor",
@@ -5330,7 +5330,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -6313,7 +6313,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
