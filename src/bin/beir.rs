@@ -306,7 +306,12 @@ fn run_dataset(
 
         let result = db.search(search_query);
         let ranked_ids: Vec<String> = match result {
-            Ok((hits, _stats)) => hits.iter().map(|h| h.entity.clone()).collect(),
+            Ok((hits, _stats)) => hits
+                .iter()
+                // BEIR convention: ignore self-matches (query_id == doc_id)
+                .filter(|h| h.entity != **qid)
+                .map(|h| h.entity.clone())
+                .collect(),
             Err(e) => {
                 eprintln!("  Search error for query {}: {}", qid, e);
                 vec![]
