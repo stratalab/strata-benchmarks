@@ -1744,7 +1744,11 @@ impl BenchDatabaseConnection for StrataBenchDatabaseConnection<'_> {
         Self: 'db;
 
     fn write_transaction(&self) -> Self::W<'_> {
-        StrataBenchWriteTransaction { db: self.db }
+        StrataBenchWriteTransaction {
+            db: self.db,
+            inserts: Vec::new(),
+            deletes: Vec::new(),
+        }
     }
 
     fn read_transaction(&self) -> Self::R<'_> {
@@ -1754,6 +1758,8 @@ impl BenchDatabaseConnection for StrataBenchDatabaseConnection<'_> {
 
 pub struct StrataBenchWriteTransaction<'a> {
     db: &'a Strata,
+    inserts: Vec<stratadb::BatchKvEntry>,
+    deletes: Vec<String>,
 }
 
 impl<'a> BenchWriteTransaction for StrataBenchWriteTransaction<'a> {
@@ -1763,30 +1769,50 @@ impl<'a> BenchWriteTransaction for StrataBenchWriteTransaction<'a> {
         Self: 'txn;
 
     fn get_inserter(&mut self) -> Self::W<'_> {
-        StrataBenchInserter { db: self.db }
+        StrataBenchInserter {
+            db: self.db,
+            inserts: &mut self.inserts,
+            deletes: &mut self.deletes,
+        }
     }
 
     fn commit(self) -> Result<(), ()> {
+        if !self.inserts.is_empty() {
+            self.db
+                .kv_batch_put(self.inserts)
+                .map(|_| ())
+                .map_err(|_| ())?;
+        }
+        if !self.deletes.is_empty() {
+            self.db
+                .kv_batch_delete(self.deletes)
+                .map(|_| ())
+                .map_err(|_| ())?;
+        }
         Ok(())
     }
 }
 
 pub struct StrataBenchInserter<'a> {
     db: &'a Strata,
+    inserts: &'a mut Vec<stratadb::BatchKvEntry>,
+    deletes: &'a mut Vec<String>,
 }
 
 impl BenchInserter for StrataBenchInserter<'_> {
     fn insert(&mut self, key: &[u8], value: &[u8]) -> Result<(), ()> {
         let hex_key = bytes_to_hex(key);
-        self.db
-            .kv_put(&hex_key, Value::Bytes(value.to_vec()))
-            .map(|_| ())
-            .map_err(|_| ())
+        self.inserts.push(stratadb::BatchKvEntry {
+            key: hex_key,
+            value: Value::Bytes(value.to_vec()),
+        });
+        Ok(())
     }
 
     fn remove(&mut self, key: &[u8]) -> Result<(), ()> {
         let hex_key = bytes_to_hex(key);
-        self.db.kv_delete(&hex_key).map(|_| ()).map_err(|_| ())
+        self.deletes.push(hex_key);
+        Ok(())
     }
 }
 
