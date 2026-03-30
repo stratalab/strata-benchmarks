@@ -330,7 +330,7 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
     );
     results.push(("removals".to_string(), ResultType::Duration(duration)));
 
-    let uncompacted_size = database_size(path);
+    let uncompacted_size = db.size_bytes().unwrap_or_else(|| database_size(path));
     results.push((
         "uncompacted size".to_string(),
         ResultType::SizeInBytes(uncompacted_size),
@@ -409,6 +409,11 @@ pub trait BenchDatabase {
     // Returns a boolean indicating whether compaction is supported
     fn compact(&mut self) -> bool {
         false
+    }
+
+    // Override database size measurement (default: walk the filesystem path)
+    fn size_bytes(&self) -> Option<u64> {
+        None
     }
 }
 
@@ -1872,6 +1877,18 @@ impl BenchDatabase for RedisBenchDatabase {
         RedisBenchDatabaseConnection {
             con: std::cell::RefCell::new(con),
         }
+    }
+
+    fn size_bytes(&self) -> Option<u64> {
+        let client = redis::Client::open(self.url.as_str()).ok()?;
+        let mut con = client.get_connection().ok()?;
+        let info: String = redis::cmd("INFO").arg("memory").query(&mut con).ok()?;
+        for line in info.lines() {
+            if line.starts_with("used_memory:") {
+                return line.split(':').nth(1)?.trim().parse().ok();
+            }
+        }
+        None
     }
 }
 
