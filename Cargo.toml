@@ -6,7 +6,7 @@ description = "Black-box tests and performance benchmarks for StrataDB"
 license = "Apache-2.0"
 
 [dependencies]
-stratadb = { path = "../strata-core", features = ["embed"] }
+stratadb = { path = "../strata-core", features = ["embed", "openai"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tempfile = "3.8"

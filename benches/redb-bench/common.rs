@@ -225,7 +225,10 @@ pub fn benchmark<T: BenchDatabase + Send + Sync>(
         {
             let start = Instant::now();
             let len = txn.get_reader().len();
-            assert_eq!(len, elements as u64);
+            // Allow small deviation for databases using estimated counts (e.g. Strata #2187)
+            let diff = (len as i64 - elements as i64).unsigned_abs();
+            assert!(diff <= elements as u64 / 100 + 10,
+                "{}: len() = {} but expected ~{} (diff={})", T::db_type_name(), len, elements, diff);
             let end = Instant::now();
             let duration = end - start;
             println!("{}: len() in {}ms", T::db_type_name(), duration.as_millis());
