@@ -1780,15 +1780,17 @@ impl<'a> BenchWriteTransaction for StrataBenchWriteTransaction<'a> {
     }
 
     fn commit(self) -> Result<(), ()> {
-        if !self.inserts.is_empty() {
+        // Chunk large batches to stay within write buffer limits
+        const CHUNK: usize = 50_000;
+        for chunk in self.inserts.chunks(CHUNK) {
             self.db
-                .kv_batch_put(self.inserts)
+                .kv_batch_put(chunk.to_vec())
                 .map(|_| ())
                 .map_err(|_| ())?;
         }
-        if !self.deletes.is_empty() {
+        for chunk in self.deletes.chunks(CHUNK) {
             self.db
-                .kv_batch_delete(self.deletes)
+                .kv_batch_delete(chunk.to_vec())
                 .map(|_| ())
                 .map_err(|_| ())?;
         }
