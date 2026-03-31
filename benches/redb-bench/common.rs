@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use std::{fs, mem, thread};
-use stratadb::{Strata, Value};
+use stratadb::{Key, Namespace, Strata, StorageIterator, Value};
 
 #[allow(dead_code)]
 const X: TableDefinition<&[u8], &[u8]> = TableDefinition::new("x");
@@ -1860,24 +1860,11 @@ impl BenchReader for StrataBenchReader<'_> {
 
     fn range_from<'a>(&'a self, key: &'a [u8]) -> Self::Iterator<'a> {
         let hex_key = bytes_to_hex(key);
-        let pairs = self
-            .db
-            .kv_scan(Some(&hex_key), Some((DEFAULT_SCAN_LEN + 1) as u64))
-            .unwrap_or_default();
-        let results: Vec<(Vec<u8>, Vec<u8>)> = pairs
-            .into_iter()
-            .map(|(k, v)| {
-                let key_bytes = hex_to_bytes(&k);
-                let val_bytes = match v {
-                    Value::Bytes(b) => b,
-                    _ => Vec::new(),
-                };
-                (key_bytes, val_bytes)
-            })
-            .collect();
-        StrataBenchIterator {
-            results: results.into_iter(),
-        }
+        let mut iter = self.db.kv_iterator().unwrap();
+        let ns = Arc::new(Namespace::for_branch_space(Default::default(), "default"));
+        let seek_key = Key::new_kv(ns, &hex_key);
+        iter.seek(&seek_key).unwrap();
+        StrataBenchIterator { iter }
     }
 
     fn len(&self) -> u64 {
@@ -1886,7 +1873,7 @@ impl BenchReader for StrataBenchReader<'_> {
 }
 
 pub struct StrataBenchIterator {
-    results: std::vec::IntoIter<(Vec<u8>, Vec<u8>)>,
+    iter: StorageIterator,
 }
 
 impl BenchIterator for StrataBenchIterator {
@@ -1896,7 +1883,13 @@ impl BenchIterator for StrataBenchIterator {
         Self: 'out;
 
     fn next(&mut self) -> Option<(Self::Output<'_>, Self::Output<'_>)> {
-        self.results.next()
+        let (key, vv) = self.iter.next()?;
+        let key_bytes = hex_to_bytes(&key.user_key_string()?);
+        let val_bytes = match vv.value {
+            Value::Bytes(b) => b,
+            _ => Vec::new(),
+        };
+        Some((key_bytes, val_bytes))
     }
 }
 
