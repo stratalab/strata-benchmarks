@@ -51,7 +51,13 @@ fn main() {
     // ── Strata ──────────────────────────────────────────────────────────────
     let strata_results = {
         let tmpdir_strata: TempDir = tempfile::tempdir_in(&tmpdir).unwrap();
-        let db = stratadb::Strata::open(tmpdir_strata.path()).unwrap();
+        // Use "always" durability for fair comparison — other DBs fsync every commit
+        let config = stratadb::StrataConfig {
+            durability: "always".into(),
+            ..stratadb::StrataConfig::default()
+        };
+        let engine = stratadb::Database::open_with_config(tmpdir_strata.path(), config).unwrap();
+        let db = stratadb::Strata::from_database(engine).unwrap();
         let table = StrataBenchDatabase::new(db);
         benchmark(table, tmpdir_strata.path(), &cfg)
     };
