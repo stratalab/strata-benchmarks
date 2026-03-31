@@ -31,9 +31,32 @@ fn parse_records() -> usize {
     100_000
 }
 
+fn parse_only() -> Option<Vec<String>> {
+    let args: Vec<String> = std::env::args().collect();
+    let mut i = 1;
+    while i < args.len() {
+        if args[i] == "--only" {
+            i += 1;
+            if i < args.len() {
+                return Some(args[i].split(',').map(|s| s.to_string()).collect());
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
+fn should_run(db_name: &str, only: &Option<Vec<String>>) -> bool {
+    match only {
+        None => true,
+        Some(list) => list.iter().any(|s| s == db_name),
+    }
+}
+
 fn main() {
     let _ = env_logger::try_init();
     let records = parse_records();
+    let only = parse_only();
     let cfg = BenchConfig::for_records(records);
 
     println!("=== redb benchmark: {} records ===\n", records);
@@ -49,7 +72,7 @@ fn main() {
     .unwrap();
 
     // ── Strata ──────────────────────────────────────────────────────────────
-    let strata_results = {
+    let strata_results = if !should_run("strata", &only) { None } else { Some({
         let tmpdir_strata: TempDir = tempfile::tempdir_in(&tmpdir).unwrap();
         // Use "always" durability for fair comparison — other DBs fsync every commit
         let config = stratadb::StrataConfig {
@@ -60,10 +83,10 @@ fn main() {
         let db = stratadb::Strata::from_database(engine).unwrap();
         let table = StrataBenchDatabase::new(db);
         benchmark(table, tmpdir_strata.path(), &cfg)
-    };
+    })};
 
     // ── redb ────────────────────────────────────────────────────────────────
-    let redb_results = {
+    let redb_results = if !should_run("redb", &only) { None } else { Some({
         let tmpfile: NamedTempFile = NamedTempFile::new_in(&tmpdir).unwrap();
         let mut db = redb::Database::builder()
             .set_cache_size(CACHE_SIZE)
@@ -71,10 +94,10 @@ fn main() {
             .unwrap();
         let table = RedbBenchDatabase::new(&mut db);
         benchmark(table, tmpfile.path(), &cfg)
-    };
+    })};
 
     // ── lmdb (heed) ─────────────────────────────────────────────────────────
-    let lmdb_results = {
+    let lmdb_results = if !should_run("lmdb", &only) { None } else { Some({
         let tempdir: TempDir = tempfile::tempdir_in(&tmpdir).unwrap();
         let env = unsafe {
             heed::EnvOpenOptions::new()
@@ -84,10 +107,10 @@ fn main() {
         };
         let table = HeedBenchDatabase::new(env);
         benchmark(table, tempdir.path(), &cfg)
-    };
+    })};
 
     // ── rocksdb ─────────────────────────────────────────────────────────────
-    let rocksdb_results = {
+    let rocksdb_results = if !should_run("rocksdb", &only) { None } else { Some({
         let tmpfile: TempDir = tempfile::tempdir_in(&tmpdir).unwrap();
 
         let cache = rocksdb::Cache::new_lru_cache(CACHE_SIZE);
@@ -116,10 +139,10 @@ fn main() {
         let db = rocksdb::OptimisticTransactionDB::open(&opts, tmpfile.path()).unwrap();
         let table = RocksdbBenchDatabase::new(&db);
         benchmark(table, tmpfile.path(), &cfg)
-    };
+    })};
 
     // ── sled ────────────────────────────────────────────────────────────────
-    let sled_results = {
+    let sled_results = if !should_run("sled", &only) { None } else { Some({
         let tmpfile: TempDir = tempfile::tempdir_in(&tmpdir).unwrap();
 
         let db = sled::Config::new()
@@ -130,10 +153,10 @@ fn main() {
 
         let table = SledBenchDatabase::new(&db, tmpfile.path());
         benchmark(table, tmpfile.path(), &cfg)
-    };
+    })};
 
     // ── fjall ───────────────────────────────────────────────────────────────
-    let fjall_results = {
+    let fjall_results = if !should_run("fjall", &only) { None } else { Some({
         let tmpfile: TempDir = tempfile::tempdir_in(&tmpdir).unwrap();
 
         let mut db = fjall::Config::new(tmpfile.path())
@@ -143,21 +166,21 @@ fn main() {
 
         let table = FjallBenchDatabase::new(&mut db);
         benchmark(table, tmpfile.path(), &cfg)
-    };
+    })};
 
     // ── sqlite ──────────────────────────────────────────────────────────────
-    let sqlite_results = {
+    let sqlite_results = if !should_run("sqlite", &only) { None } else { Some({
         let tmpfile: NamedTempFile = NamedTempFile::new_in(&tmpdir).unwrap();
         let table = SqliteBenchDatabase::new(tmpfile.path());
         benchmark(table, tmpfile.path(), &cfg)
-    };
+    })};
 
     // ── Redis (optional — skipped if server unavailable) ────────────────────
-    let redis_results = RedisBenchDatabase::new("redis://127.0.0.1/").map(|table| {
+    let redis_results = if !should_run("redis", &only) { None } else { RedisBenchDatabase::new("redis://127.0.0.1/").map(|table| {
         let tmpdir_redis: TempDir = tempfile::tempdir_in(&tmpdir).unwrap();
         benchmark(table, tmpdir_redis.path(), &cfg)
-    });
-    if redis_results.is_none() {
+    })};
+    if redis_results.is_none() && should_run("redis", &only) {
         println!("Redis: skipped (server not available at 127.0.0.1:6379)");
     }
 
@@ -166,11 +189,8 @@ fn main() {
     // ── Print comparison table ──────────────────────────────────────────────
     let mut rows = Vec::new();
 
-    for (benchmark, _duration) in &strata_results {
-        rows.push(vec![benchmark.to_string()]);
-    }
-
-    let mut all_results: Vec<Vec<(String, ResultType)>> = vec![
+    // Find first non-None result to get benchmark names
+    let all_optional: Vec<Option<Vec<(String, ResultType)>>> = vec![
         strata_results,
         redb_results,
         lmdb_results,
@@ -178,13 +198,30 @@ fn main() {
         sled_results,
         fjall_results,
         sqlite_results,
+        redis_results,
     ];
-    let mut headers = vec![
-        "", "strata", "redb", "lmdb", "rocksdb", "sled", "fjall", "sqlite",
+    let all_headers = vec![
+        "strata", "redb", "lmdb", "rocksdb", "sled", "fjall", "sqlite", "redis",
     ];
-    if let Some(redis) = redis_results {
-        all_results.push(redis);
-        headers.push("redis");
+
+    // Collect only the databases that were run
+    let mut all_results: Vec<Vec<(String, ResultType)>> = Vec::new();
+    let mut headers: Vec<&str> = vec![""];
+    for (i, opt) in all_optional.into_iter().enumerate() {
+        if let Some(results) = opt {
+            if rows.is_empty() {
+                for (benchmark, _) in &results {
+                    rows.push(vec![benchmark.to_string()]);
+                }
+            }
+            all_results.push(results);
+            headers.push(all_headers[i]);
+        }
+    }
+
+    if rows.is_empty() {
+        println!("No databases were benchmarked.");
+        return;
     }
 
     let mut identified_smallests = vec![vec![false; all_results.len()]; rows.len()];
