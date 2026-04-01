@@ -295,13 +295,24 @@ fn run_dataset(
     for (qid, query_text) in &eval_queries {
         let search_query = SearchQuery {
             query: query_text.to_string(),
-            k: Some(k as u64),
-            primitives: Some(vec!["kv".to_string()]),
-            time_range: None,
-            mode: Some(mode.to_string()),
-            expand: None,
-            rerank: None,
+            recipe: if mode == "keyword" {
+                // Keyword-only: disable vector; force-skip expansion via threshold=0.
+                Some(serde_json::json!({
+                    "retrieve": {"bm25": {}, "vector": null},
+                    "expansion": {"strong_signal_threshold": 0.0, "strong_signal_gap": 0.0},
+                    "rerank": {"top_n": 0}
+                }))
+            } else {
+                // Hybrid: BM25 + vector; force-skip expansion.
+                Some(serde_json::json!({
+                    "expansion": {"strong_signal_threshold": 0.0, "strong_signal_gap": 0.0},
+                    "rerank": {"top_n": 0}
+                }))
+            },
             precomputed_embedding: None,
+            k: Some(k as u64),
+            as_of: None,
+            diff: None,
         };
 
         let result = db.search(search_query);
