@@ -4984,6 +4984,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sled",
+ "strata-engine",
+ "strata-storage",
  "stratadb",
  "tempfile",
  "tokio",
@@ -5129,6 +5131,7 @@ dependencies = [
  "strata-core",
  "strata-engine",
  "strata-inference",
+ "strata-search",
  "tracing",
 ]
 

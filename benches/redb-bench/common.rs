@@ -1804,6 +1804,14 @@ pub struct StrataBenchInserter<'a> {
     deletes: &'a mut Vec<String>,
 }
 
+/// Match RocksDB's bulk load behavior: commit every 50K records during
+/// the insert loop so that memtable flushes and compaction run concurrently
+/// with writes. Without this, Strata buffers everything and dumps all data
+/// at commit time, giving compaction zero time to converge.
+/// Match RocksDB's ROCKSDB_MAX_WRITES_PER_TXN: commit every 100K records
+/// during the insert loop so memtable rotation and compaction run concurrently.
+const STRATA_WRITES_PER_COMMIT: usize = 100_000;
+
 impl BenchInserter for StrataBenchInserter<'_> {
     fn insert(&mut self, key: &[u8], value: &[u8]) -> Result<(), ()> {
         let hex_key = bytes_to_hex(key);
@@ -1811,12 +1819,24 @@ impl BenchInserter for StrataBenchInserter<'_> {
             key: hex_key,
             value: Value::Bytes(value.to_vec()),
         });
+        if self.inserts.len() >= STRATA_WRITES_PER_COMMIT {
+            self.db
+                .kv_batch_put(std::mem::take(&mut self.inserts))
+                .map(|_| ())
+                .map_err(|_| ())?;
+        }
         Ok(())
     }
 
     fn remove(&mut self, key: &[u8]) -> Result<(), ()> {
         let hex_key = bytes_to_hex(key);
         self.deletes.push(hex_key);
+        if self.deletes.len() >= STRATA_WRITES_PER_COMMIT {
+            self.db
+                .kv_batch_delete(std::mem::take(&mut self.deletes))
+                .map(|_| ())
+                .map_err(|_| ())?;
+        }
         Ok(())
     }
 }
